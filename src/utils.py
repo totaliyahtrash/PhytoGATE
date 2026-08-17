@@ -3,6 +3,7 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 import seaborn as sns
+from scipy import stats
 from skimage.feature import graycomatrix, graycoprops
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 
@@ -98,6 +99,22 @@ def evaluate_model_metrics(y_true, preds_prob, start_time, len_test):
     f1 = f1_score(y_true, preds, average='macro', zero_division=0)
     
     return acc, prec, rec, f1, elapsed, preds
+
+def run_mcnemar_test(y_true, preds_baseline, preds_proposed):
+    """ Performs McNemar's paired statistical significance test. """
+    correct_b = (preds_baseline == y_true)
+    correct_p = (preds_proposed == y_true)
+    
+    b_only = np.sum(correct_b & ~correct_p)
+    c_only = np.sum(~correct_b & correct_p)
+    
+    if (b_only + c_only) == 0:
+        p_val = 1.0
+    else:
+        stat = (abs(b_only - c_only) - 1)**2 / (b_only + c_only)
+        p_val = stats.chi2.sf(stat, 1)
+        
+    return b_only, c_only, p_val
 
 def save_confusion_matrix_plot(y_true, y_pred, class_names, save_path="confusion_matrix.png"):
     """ Saves a 300 DPI heatmap of the confusion matrix. """
