@@ -23,7 +23,7 @@ import tensorflow as tf
 from tensorflow.keras import optimizers, callbacks
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from src.utils import extract_stream_a_features, evaluate_model_metrics
+from src.utils import extract_stream_a_features, evaluate_model_metrics, save_confusion_matrix_plot
 from src.phytogate import build_phytogate_model, build_data_augmentation_layer
 
 CLASS_NAMES = [
@@ -88,6 +88,7 @@ def main():
         
     SEEDS = [42, 52, 62]
     results = []
+    last_preds, last_y_test = None, None
     
     for seed in SEEDS:
         print(f"\n---> Running Seed {seed}...")
@@ -133,14 +134,18 @@ def main():
         
         t0 = time.time()
         preds_prob = model.predict([images_rgb[idx_test], X_test_pca], verbose=0)
-        acc, prec, rec, f1, lat, _ = evaluate_model_metrics(y_test, preds_prob, t0, len(y_test))
+        acc, prec, rec, f1, lat, preds = evaluate_model_metrics(y_test, preds_prob, t0, len(y_test))
         results.append([acc, prec, rec, f1, lat])
+        last_preds, last_y_test = preds, y_test
         print(f"[OK] Seed {seed} Test Accuracy: {acc:.2f}% (F1: {f1:.4f})")
 
     arr = np.array(results)
     print("\n==================================================================")
     print(f"PhytoGATE PlantVillage Mean Accuracy: {np.mean(arr[:,0]):.2f}% ± {np.std(arr[:,0]):.2f}% (Peak: {np.max(arr[:,0]):.2f}%)")
     print("==================================================================")
+    
+    if last_preds is not None:
+        save_confusion_matrix_plot(last_y_test, last_preds, CLASS_NAMES, "plantvillage_confusion_matrix.png")
 
 if __name__ == "__main__":
     main()
