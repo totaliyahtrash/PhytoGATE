@@ -1,0 +1,29 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Temporary datasets & zip downloads
+*.zip
+*_temp.zip
+plantvillage_leaf_dataset/
+plantdoc_leaf_dataset/
+multicrop_leaf_dataset/
+rice_leaf_dataset/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
