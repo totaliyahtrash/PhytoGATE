@@ -73,3 +73,13 @@ def build_phytogate_model(pca_dim, num_classes, img_size=(224, 224, 3)):
     
     hybrid_model = models.Model(inputs=[img_input, stream_a_input], outputs=outputs, name="PhytoGATE_Gated_Hybrid")
     return hybrid_model, base_effnet, base_densenet
+
+def export_tflite_int8(model, output_path="phytogate_quantized.tflite"):
+    """ Exports trained PhytoGATE model to TFLite INT8 for edge deployment. """
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    tflite_model = converter.convert()
+    with open(output_path, "wb") as f:
+        f.write(tflite_model)
+    print(f"[OK] Quantized TFLite model exported successfully to {output_path}")
+    return output_path
