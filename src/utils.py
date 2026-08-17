@@ -1,8 +1,10 @@
 import cv2
 import numpy as np
 import time
+import matplotlib.pyplot as plt
+import seaborn as sns
 from skimage.feature import graycomatrix, graycoprops
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 
 IMG_SIZE = (224, 224)
 
@@ -96,3 +98,18 @@ def evaluate_model_metrics(y_true, preds_prob, start_time, len_test):
     f1 = f1_score(y_true, preds, average='macro', zero_division=0)
     
     return acc, prec, rec, f1, elapsed, preds
+
+def save_confusion_matrix_plot(y_true, y_pred, class_names, save_path="confusion_matrix.png"):
+    """ Saves a 300 DPI heatmap of the confusion matrix. """
+    cm = confusion_matrix(y_true, y_pred)
+    plt.figure(figsize=(8, 6), dpi=300)
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Greens',
+                xticklabels=[c.replace('_', '\n') for c in class_names],
+                yticklabels=[c.replace('_', '\n') for c in class_names])
+    plt.title('Test Set Confusion Matrix - PhytoGATE Hybrid', fontsize=12, fontweight='bold')
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
+    plt.close()
+    print(f"[OK] Confusion matrix plot saved to {save_path}")
