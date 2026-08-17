@@ -105,6 +105,24 @@ PhytoGATE/
 
 ---
 
+## 📱 Edge Quantization & Mobile TFLite Deployment
+
+PhytoGATE can be quantized to **INT8 precision** using TensorFlow Lite for direct deployment on agricultural drones and mobile smart devices:
+
+```python
+import tensorflow as tf
+
+# Convert trained PhytoGATE model to TFLite INT8
+converter = tf.lite.TFLiteConverter.from_keras_model(phytogate_model)
+converter.optimizations = [tf.lite.Optimize.DEFAULT]
+tflite_model = converter.convert()
+
+with open("phytogate_quantized.tflite", "wb") as f:
+    f.write(tflite_model)
+```
+
+---
+
 ## 🚀 Quickstart Guide
 
 ### 1. Installation
