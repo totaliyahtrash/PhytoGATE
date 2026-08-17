@@ -17,6 +17,7 @@
   - **PlantVillage (Laboratory Benchmark)**: **97.01% Peak Accuracy** (96.31% ± 0.69% 3-seed mean).
   - **PlantDoc (In-the-Wild Field Benchmark)**: **83.77% ± 0.62% Mean Accuracy**, outperforming published literature field baselines (78.50%) by **+5.27%**.
   - **Multi-Crop (Foliar Benchmark)**: **99.72% ± 0.28% Mean Accuracy** (100.00% Peak).
+  - **Rice Leaf (Cereal Benchmark)**: **98.85% ± 0.31% Mean Accuracy**.
 - **Edge Deployment Ready**: Operating at **29.31 ms per image** latency with **12.3M parameters** ($7\times$ lighter than Vision Transformers ViT-Base).
 
 ---
@@ -68,18 +69,6 @@
 
 ---
 
-## 📊 Benchmark Performance
-
-### 1. Three-Dataset Triangulation Summary (3-Seed Zero-Leakage Evaluation)
-
-| Dataset | Scope | Model Architecture | Peak Test Acc | 3-Seed Mean Acc | Macro F1-Score | Inference Latency |
-| :--- | :--- | :--- | :---: | :---: | :---: | :---: |
-| **PlantVillage** | Solanaceae (Tomato/Potato) | **PhytoGATE (Proposed)** | **97.01%** | **96.31% ± 0.69%** | **0.9632** | **29.31 ms** |
-| **PlantDoc** | In-the-Wild Outdoor Field | **PhytoGATE Dual-Stream**| **85.53%** | **83.77% ± 0.62%** | **0.6972** | **88.74 ms** |
-| **Multi-Crop** | Corn, Grape, Peach | **PhytoGATE (Proposed)** | **100.00%** | **99.72% ± 0.28%** | **0.9972** | **29.44 ms** |
-
----
-
 ## 📁 Repository Structure
 
 ```text
@@ -95,30 +84,14 @@ PhytoGATE/
 ├── scripts/                            # Benchmark execution scripts
 │   ├── train_plantvillage.py           # PlantVillage benchmark runner
 │   ├── train_plantdoc.py               # PlantDoc field benchmark runner
-│   └── train_multicrop.py              # Multi-Crop benchmark runner
+│   ├── train_multicrop.py              # Multi-Crop benchmark runner
+│   └── train_rice.py                   # Rice leaf disease benchmark runner
 ├── docs/                               # PDF Reports & Learning Guides
 │   ├── PhytoGATE_Benchmark_Report.pdf  # Technical benchmark report PDF
-│   └── PhytoGATE_Master_Learning_Guide.pdf # Master technical learning guide PDF
+│   ├── PhytoGATE_Master_Learning_Guide.pdf # Master technical learning guide PDF
+│   └── PYTORCH_SPEC.md                 # PyTorch implementation reference
 └── paper/                              # Academic journal manuscript
     └── plant_leaf_disease_research_paper.md
-```
-
----
-
-## 📱 Edge Quantization & Mobile TFLite Deployment
-
-PhytoGATE can be quantized to **INT8 precision** using TensorFlow Lite for direct deployment on agricultural drones and mobile smart devices:
-
-```python
-import tensorflow as tf
-
-# Convert trained PhytoGATE model to TFLite INT8
-converter = tf.lite.TFLiteConverter.from_keras_model(phytogate_model)
-converter.optimizations = [tf.lite.Optimize.DEFAULT]
-tflite_model = converter.convert()
-
-with open("phytogate_quantized.tflite", "wb") as f:
-    f.write(tflite_model)
 ```
 
 ---
@@ -133,16 +106,13 @@ cd PhytoGATE
 pip install -r requirements.txt
 ```
 
-### 2. Run PlantVillage Benchmark
+### 2. Run Benchmarks
 
 ```bash
-python scripts/train_plantvillage.py
-```
-
-### 3. Run PlantDoc Field Benchmark
-
-```bash
-python scripts/train_plantdoc.py
+python scripts/train_plantvillage.py  # PlantVillage Solanaceae
+python scripts/train_plantdoc.py      # PlantDoc Outdoor Field
+python scripts/train_multicrop.py     # Multi-Crop Foliar
+python scripts/train_rice.py          # Rice Leaf Diseases
 ```
 
 ---
@@ -151,23 +121,8 @@ python scripts/train_plantdoc.py
 
 - 📄 **[Technical Benchmark Report (PDF)](docs/PhytoGATE_Benchmark_Report.pdf)**
 - 📄 **[Master Technical Learning Guide (PDF)](docs/PhytoGATE_Master_Learning_Guide.pdf)**
+- 📄 **[PyTorch Implementation Reference (Markdown)](docs/PYTORCH_SPEC.md)**
 - 📄 **[Research Paper Manuscript (Markdown)](paper/plant_leaf_disease_research_paper.md)**
-
----
-
-## 📝 Citation
-
-If you use **PhytoGATE** or its benchmark suites in your research, please cite:
-
-```bibtex
-@article{phytogate2026,
-  title={PhytoGATE: Phytosanitary Gated Attention & Texture Ensemble for Automated Plant Disease Diagnosis},
-  author={Machine Learning and Computer Vision Research Team},
-  journal={Computers and Electronics in Agriculture},
-  year={2026},
-  publisher={Elsevier}
-}
-```
 
 ---
 
