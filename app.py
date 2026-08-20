@@ -318,7 +318,7 @@ def main():
         
         with col1:
             st.subheader("1. Uploaded Leaf")
-            st.image(image_resized, caption="Original Input (224x224)", use_column_width=True)
+            st.image(image_resized, caption="Original Input (224x224)", use_container_width=True)
             
         with st.spinner("Extracting Stream A Features & Running Dual Sigmoid Gating..."):
             t0 = time.time()
@@ -329,8 +329,8 @@ def main():
         with col2:
             st.subheader("2. Stream A Processing")
             if show_stream_a:
-                st.image(clahe_rgb, caption="CLAHE LAB Contrast Enhancement", use_column_width=True)
-                st.image(otsu_mask, caption="Otsu Binary Leaf Mask", use_column_width=True)
+                st.image(clahe_rgb, caption="CLAHE LAB Contrast Enhancement", use_container_width=True)
+                st.image(otsu_mask, caption="Otsu Binary Leaf Mask", use_container_width=True)
             else:
                 st.info("Stream A visual inspection toggled off.")
 
@@ -363,7 +363,7 @@ def main():
                 st.markdown("### 🎯 Grad-CAM Lesion Heatmap Focus")
                 heatmap = cv2.applyColorMap((otsu_mask * 0.8).astype(np.uint8), cv2.COLORMAP_JET)
                 overlay = cv2.addWeighted(image_resized, 0.6, cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB), 0.4, 0)
-                st.image(overlay, caption="PhytoGATE Sigmoid Gate Heatmap Focus (Attending to Lesion Zones)", use_column_width=True)
+                st.image(overlay, caption="PhytoGATE Sigmoid Gate Heatmap Focus (Attending to Lesion Zones)", use_container_width=True)
 
         with d_col2:
             st.markdown("### 🛡️ Recommended Organic Treatment & Action Plan")
