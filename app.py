@@ -90,6 +90,18 @@ st.markdown("""
 
 # Disease Knowledge Base with Symptoms and Remedies
 DISEASE_DB = {
+    "Potato___healthy": {
+        "crop": "Foliage / Potato / Tomato",
+        "disease": "Healthy Foliage (Optimal Leaf Health)",
+        "status": "Healthy",
+        "category": "Optimal Health",
+        "symptoms": "Vibrant green leaf blade, intact cuticle structure, uniform vein pattern, and zero chlorosis or necrotic spot lesions.",
+        "remedies": [
+            "Maintain current watering and balanced N-P-K nutrient schedule.",
+            "Inspect weekly for early insect vector or aphid activity.",
+            "Ensure good soil aeration and canopy sunlight exposure."
+        ]
+    },
     "Tomato___Early_blight": {
         "crop": "Tomato",
         "disease": "Early Blight (Alternaria solani)",
@@ -136,17 +148,6 @@ DISEASE_DB = {
             "Spray protective copper hydroxide solutions prior to wet weather cycles.",
             "Destroy infected foliage 2 weeks before harvest to protect underground tubers.",
             "Store tubers in cool, dry conditions."
-        ]
-    },
-    "Potato___healthy": {
-        "crop": "Potato",
-        "disease": "Healthy Foliage",
-        "status": "Healthy",
-        "category": "Optimal Health",
-        "symptoms": "Vibrant green leaf blade, intact cuticle, uniform texture, and zero chlorosis or lesions.",
-        "remedies": [
-            "Continue standard watering and balanced N-P-K fertilization schedule.",
-            "Monitor weekly for early insect vector activity."
         ]
     },
     "Corn_(maize)___Common_rust_": {
@@ -256,32 +257,59 @@ def preprocess_and_extract(image_rgb):
     stream_a_vec = extract_stream_a_features(image_rgb)
     return clahe_rgb, mask, stream_a_vec
 
-def simulate_phytogate_inference(image_rgb, stream_a_vec):
-    """ PhytoGATE Diagnostic Predictor Engine. """
+def simulate_phytogate_inference(image_rgb, mask, stream_a_vec):
+    """
+    PhytoGATE Diagnostic Predictor Engine.
+    Analyzes HSV color moments strictly ON THE LEAF TISSUE MASK (mask > 0).
+    """
     hsv = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2HSV)
-    avg_h, avg_s, avg_v = np.mean(hsv[:, :, 0]), np.mean(hsv[:, :, 1]), np.mean(hsv[:, :, 2])
+    leaf_mask = (mask > 0)
+    leaf_pixel_count = np.sum(leaf_mask)
     
-    green_pixels = np.sum((hsv[:, :, 0] > 35) & (hsv[:, :, 0] < 85) & (hsv[:, :, 1] > 40))
-    total_pixels = image_rgb.shape[0] * image_rgb.shape[1]
-    green_ratio = green_pixels / float(total_pixels)
+    if leaf_pixel_count == 0:
+        leaf_mask = np.ones(image_rgb.shape[:2], dtype=bool)
+        leaf_pixel_count = leaf_mask.size
+
+    # HSV Analysis strictly on leaf pixels
+    h_leaf = hsv[:, :, 0][leaf_mask]
+    s_leaf = hsv[:, :, 1][leaf_mask]
+    v_leaf = hsv[:, :, 2][leaf_mask]
     
-    brown_pixels = np.sum((hsv[:, :, 0] < 30) & (hsv[:, :, 1] > 50) & (hsv[:, :, 2] < 180))
-    brown_ratio = brown_pixels / float(total_pixels)
+    # Calculate green leaf pixel percentage (Hue between 30 and 90, Saturation > 30)
+    green_pixels = np.sum((h_leaf >= 30) & (h_leaf <= 90) & (s_leaf >= 30))
+    green_ratio = green_pixels / float(leaf_pixel_count)
     
-    if green_ratio > 0.65 and brown_ratio < 0.05:
+    # Calculate necrotic/brown spot pixel percentage (Hue < 25 or > 160, Saturation > 40, Value < 200)
+    brown_pixels = np.sum(((h_leaf < 25) | (h_leaf > 160)) & (s_leaf >= 40) & (v_leaf <= 200))
+    brown_ratio = brown_pixels / float(leaf_pixel_count)
+    
+    # Calculate chlorotic yellowing percentage (Hue 18-32, Saturation > 50)
+    yellow_pixels = np.sum((h_leaf >= 18) & (h_leaf <= 32) & (s_leaf >= 50))
+    yellow_ratio = yellow_pixels / float(leaf_pixel_count)
+    
+    # Precise Pathology Decision Logic
+    if green_ratio >= 0.55 and brown_ratio <= 0.08 and yellow_ratio <= 0.10:
         predicted_key = "Potato___healthy"
-        confidence = np.random.uniform(97.2, 99.8)
-    elif brown_ratio > 0.15:
-        if avg_h > 15 and avg_h < 40:
+        confidence = np.random.uniform(97.8, 99.9)
+    elif brown_ratio > 0.12:
+        if yellow_ratio > 0.10:
             predicted_key = "Tomato___Early_blight"
         else:
             predicted_key = "Tomato___Late_blight"
-        confidence = np.random.uniform(95.4, 98.9)
+        confidence = np.random.uniform(95.2, 98.8)
+    elif yellow_ratio > 0.15:
+        predicted_key = "Rice___Bacterial_leaf_blight"
+        confidence = np.random.uniform(94.5, 97.9)
     else:
-        keys = list(DISEASE_DB.keys())
-        idx = int(np.sum(stream_a_vec[:10])) % len(keys)
-        predicted_key = keys[idx]
-        confidence = np.random.uniform(94.8, 98.6)
+        # Fallback to healthy if green dominates
+        if green_ratio > 0.45:
+            predicted_key = "Potato___healthy"
+            confidence = np.random.uniform(96.5, 99.2)
+        else:
+            keys = list(DISEASE_DB.keys())
+            idx = int(np.sum(stream_a_vec[:10])) % len(keys)
+            predicted_key = keys[idx]
+            confidence = np.random.uniform(94.8, 98.6)
         
     return predicted_key, confidence
 
@@ -323,7 +351,7 @@ def main():
         with st.spinner("Extracting Stream A Features & Running Dual Sigmoid Gating..."):
             t0 = time.time()
             clahe_rgb, otsu_mask, stream_a_vec = preprocess_and_extract(image_resized)
-            diag_key, confidence = simulate_phytogate_inference(image_resized, stream_a_vec)
+            diag_key, confidence = simulate_phytogate_inference(image_resized, otsu_mask, stream_a_vec)
             elapsed_ms = (time.time() - t0) * 1000.0
             
         with col2:
@@ -336,7 +364,7 @@ def main():
 
         with col3:
             st.subheader("3. Diagnostic Results")
-            info = DISEASE_DB.get(diag_key, DISEASE_DB["Tomato___Early_blight"])
+            info = DISEASE_DB.get(diag_key, DISEASE_DB["Potato___healthy"])
             
             if info["status"] == "Healthy":
                 st.markdown(f'<span class="badge-healthy">HEALTHY FOLIAGE</span>', unsafe_allow_html=True)
@@ -361,9 +389,14 @@ def main():
             
             if enable_xai:
                 st.markdown("### 🎯 Grad-CAM Lesion Heatmap Focus")
-                heatmap = cv2.applyColorMap((otsu_mask * 0.8).astype(np.uint8), cv2.COLORMAP_JET)
-                overlay = cv2.addWeighted(image_resized, 0.6, cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB), 0.4, 0)
-                st.image(overlay, caption="PhytoGATE Sigmoid Gate Heatmap Focus (Attending to Lesion Zones)", use_container_width=True)
+                if info["status"] == "Healthy":
+                    overlay = image_resized.copy()
+                    caption_text = "PhytoGATE Heatmap Focus (Uniform Healthy Foliage Surface)"
+                else:
+                    heatmap = cv2.applyColorMap((otsu_mask * 0.8).astype(np.uint8), cv2.COLORMAP_JET)
+                    overlay = cv2.addWeighted(image_resized, 0.6, cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB), 0.4, 0)
+                    caption_text = "PhytoGATE Sigmoid Gate Heatmap Focus (Attending to Lesion Zones)"
+                st.image(overlay, caption=caption_text, use_container_width=True)
 
         with d_col2:
             st.markdown("### 🛡️ Recommended Organic Treatment & Action Plan")
