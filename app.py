@@ -9,12 +9,22 @@ import time
 import numpy as np
 from PIL import Image
 
-# Ensure cv2 is available with auto-installer fallback
+# Bulletproof auto-installer for all required packages
 try:
     import cv2
+    import skimage
+    import sklearn
+    import scipy
+    import matplotlib
+    import seaborn
 except ImportError:
-    os.system("pip install opencv-python-headless")
+    os.system("pip install -q opencv-python-headless scikit-image scikit-learn scipy matplotlib seaborn streamlit pillow")
     import cv2
+    import skimage
+    import sklearn
+    import scipy
+    import matplotlib
+    import seaborn
 
 import streamlit as st
 
@@ -166,7 +176,7 @@ DISEASE_DB = {
         "disease": "Black Rot (Guignardia bidwellii)",
         "status": "Diseased",
         "category": "Fungal Pathogen",
-        "symptoms": "Small, reddish-brown reddish spots on leaves with black pycnidia specks arranged in a ring.",
+        "symptoms": "Small, reddish-brown spots on leaves with black pycnidia specks arranged in a ring.",
         "remedies": [
             "Prune infected canes during dormant pruning season.",
             "Apply Myclobutanil or Captan starting at early shoot development."
