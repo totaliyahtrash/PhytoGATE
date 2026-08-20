@@ -1,4 +1,4 @@
-# Python Dependencies for PhytoGATE Architecture
+# Python Dependencies for PhytoGATE Architecture & Local Web Dashboard
 tensorflow>=2.15.0
 keras>=3.0.0
 opencv-python>=4.8.0
@@ -10,3 +10,5 @@ pandas>=2.0.0
 matplotlib>=3.7.0
 seaborn>=0.12.0
 markdown>=3.5.0
+streamlit>=1.30.0
+pillow>=10.0.0
