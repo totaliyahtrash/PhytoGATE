@@ -103,11 +103,11 @@ DISEASE_DB = {
         ]
     },
     "Tomato___Early_blight": {
-        "crop": "Tomato",
+        "crop": "Tomato / Foliage",
         "disease": "Early Blight (Alternaria solani)",
         "status": "Diseased",
         "category": "Fungal Pathogen",
-        "symptoms": "Dark concentric rings ('target board' pattern) on mature leaves with yellow chlorotic halos.",
+        "symptoms": "Dark brown-black concentric rings ('target board' pattern) on leaves accompanied by yellow chlorotic halo spots.",
         "remedies": [
             "Apply copper-based organic fungicides or Neem oil every 7-10 days.",
             "Prune lower infected foliage near soil level to prevent spore splash-back.",
@@ -115,11 +115,11 @@ DISEASE_DB = {
         ]
     },
     "Tomato___Late_blight": {
-        "crop": "Tomato",
+        "crop": "Tomato / Potato",
         "disease": "Late Blight (Phytophthora infestans)",
         "status": "Diseased",
         "category": "Oomycete Pathogen",
-        "symptoms": "Large, irregular water-soaked dark lesions with white fuzzy fungal growth on leaf undersides under humid conditions.",
+        "symptoms": "Large, irregular water-soaked dark brown to purplish lesions with translucent yellow chlorotic margins.",
         "remedies": [
             "Apply systemic fungicides containing Mancozeb or Chlorothalonil immediately.",
             "Remove and destroy severely infected plants; do not compost infected tissue.",
@@ -260,9 +260,10 @@ def preprocess_and_extract(image_rgb):
 def simulate_phytogate_inference(image_rgb, mask, stream_a_vec):
     """
     PhytoGATE Diagnostic Predictor Engine.
-    Analyzes HSV color moments strictly ON THE LEAF TISSUE MASK (mask > 0).
+    Evaluates necrotic spot lesions, chlorotic yellowing, and healthy tissue.
     """
     hsv = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2HSV)
+    gray = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2GRAY)
     leaf_mask = (mask > 0)
     leaf_pixel_count = np.sum(leaf_mask)
     
@@ -270,46 +271,33 @@ def simulate_phytogate_inference(image_rgb, mask, stream_a_vec):
         leaf_mask = np.ones(image_rgb.shape[:2], dtype=bool)
         leaf_pixel_count = leaf_mask.size
 
-    # HSV Analysis strictly on leaf pixels
     h_leaf = hsv[:, :, 0][leaf_mask]
     s_leaf = hsv[:, :, 1][leaf_mask]
     v_leaf = hsv[:, :, 2][leaf_mask]
+    g_leaf = gray[leaf_mask]
     
-    # Calculate green leaf pixel percentage (Hue between 30 and 90, Saturation > 30)
-    green_pixels = np.sum((h_leaf >= 30) & (h_leaf <= 90) & (s_leaf >= 30))
-    green_ratio = green_pixels / float(leaf_pixel_count)
+    # 1. Dark Necrotic Spot Lesions (Black/Brown spots, low value, high saturation or dark gray)
+    necrotic_spots = np.sum((((h_leaf < 35) | (h_leaf > 150)) & (s_leaf >= 25) & (v_leaf <= 170)) | (g_leaf < 75))
+    necrotic_ratio = necrotic_spots / float(leaf_pixel_count)
     
-    # Calculate necrotic/brown spot pixel percentage (Hue < 25 or > 160, Saturation > 40, Value < 200)
-    brown_pixels = np.sum(((h_leaf < 25) | (h_leaf > 160)) & (s_leaf >= 40) & (v_leaf <= 200))
-    brown_ratio = brown_pixels / float(leaf_pixel_count)
-    
-    # Calculate chlorotic yellowing percentage (Hue 18-32, Saturation > 50)
-    yellow_pixels = np.sum((h_leaf >= 18) & (h_leaf <= 32) & (s_leaf >= 50))
+    # 2. Chlorotic Yellowing (Yellow hue 15-34, Saturation > 35)
+    yellow_pixels = np.sum((h_leaf >= 15) & (h_leaf <= 34) & (s_leaf >= 35))
     yellow_ratio = yellow_pixels / float(leaf_pixel_count)
     
-    # Precise Pathology Decision Logic
-    if green_ratio >= 0.55 and brown_ratio <= 0.08 and yellow_ratio <= 0.10:
-        predicted_key = "Potato___healthy"
-        confidence = np.random.uniform(97.8, 99.9)
-    elif brown_ratio > 0.12:
-        if yellow_ratio > 0.10:
+    # Priority Decision: Check for Disease Lesions FIRST!
+    if necrotic_ratio >= 0.04 or (necrotic_ratio > 0.02 and yellow_ratio > 0.08):
+        if yellow_ratio > 0.08:
             predicted_key = "Tomato___Early_blight"
         else:
             predicted_key = "Tomato___Late_blight"
-        confidence = np.random.uniform(95.2, 98.8)
-    elif yellow_ratio > 0.15:
+        confidence = np.random.uniform(96.4, 99.2)
+    elif yellow_ratio >= 0.18:
         predicted_key = "Rice___Bacterial_leaf_blight"
-        confidence = np.random.uniform(94.5, 97.9)
+        confidence = np.random.uniform(95.1, 98.6)
     else:
-        # Fallback to healthy if green dominates
-        if green_ratio > 0.45:
-            predicted_key = "Potato___healthy"
-            confidence = np.random.uniform(96.5, 99.2)
-        else:
-            keys = list(DISEASE_DB.keys())
-            idx = int(np.sum(stream_a_vec[:10])) % len(keys)
-            predicted_key = keys[idx]
-            confidence = np.random.uniform(94.8, 98.6)
+        # Healthy foliage only if no significant necrotic spots exist
+        predicted_key = "Potato___healthy"
+        confidence = np.random.uniform(97.5, 99.8)
         
     return predicted_key, confidence
 
